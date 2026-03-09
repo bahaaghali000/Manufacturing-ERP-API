@@ -1,0 +1,257 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  permissions Json     // Permissions matrix/definitions
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model Department {
+  id                   Int                   @id @default(autoincrement())
+  name                 String                
+  budget               Decimal               @default(0.0) @db.Decimal(15, 2)
+  managerId            Int?
+  manager              User?                 @relation("DepartmentManager", fields: [managerId], references: [id])
+  users                User[]                @relation("UserDepartment")
+  purchaseRequisitions PurchaseRequisition[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@map("departments")
+}
+
+model User {
+  id                      Int                   @id @default(autoincrement())
+  name                    String
+  email                   String                @unique
+  passwordHash            String
+  roleId                  Int
+  role                    Role                  @relation(fields: [roleId], references: [id])
+  departmentId            Int?
+  department              Department?           @relation("UserDepartment", fields: [departmentId], references: [id])
+  managedDepartments      Department[]          @relation("DepartmentManager")
+  createdPRs              PurchaseRequisition[] @relation("PRCreator")
+  createdPOs              PurchaseOrder[]       @relation("POCreator")
+  approvedPOs             PurchaseOrder[]       @relation("POApprover")
+  createdSOs              SalesOrder[]          @relation("SOCreator")
+  auditLogs               AuditLog[]
+  refreshTokens           RefreshToken[]
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+
+  @@index([roleId])
+  @@index([departmentId])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Vendor {
+  id             Int             @id @default(autoincrement())
+  name           String
+  contactEmail   String?
+  phone          String?
+  address        String?
+  status         VendorStatus   @default(ACTIVE)
+  purchaseOrders PurchaseOrder[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@map("vendors")
+}
+
+model Item {
+  id               Int            @id @default(autoincrement())
+  name             String
+  sku              String         @unique
+  unit             String         // e.g., PCS, KG, L
+  category         String?
+  reorderThreshold Int            @default(0)
+  inventory        Inventory[]
+  prLineItems      PRLineItem[]
+  poLineItems      POLineItem[]
+  soLineItems      SOLineItem[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@map("items")
+}
+
+model Warehouse {
+  id        Int         @id @default(autoincrement())
+  name      String
+  location  String?
+  inventory Inventory[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@map("warehouses")
+}
+
+model Inventory {
+  id              Int       @id @default(autoincrement())
+  itemId          Int
+  item            Item      @relation(fields: [itemId], references: [id])
+  warehouseId     Int
+  warehouse       Warehouse @relation(fields: [warehouseId], references: [id])
+  quantityOnHand  Int       @default(0)
+  quantityReserved Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([itemId, warehouseId])
+  @@map("inventory")
+}
+
+model PurchaseRequisition {
+  id             Int          @id @default(autoincrement())
+  createdById    Int
+  createdBy      User         @relation("PRCreator", fields: [createdById], references: [id])
+  departmentId   Int
+  department     Department   @relation(fields: [departmentId], references: [id])
+  status         String       @default("DRAFT") // DRAFT, SUBMITTED, APPROVED, REJECTED, CONVERTED_TO_PO
+  totalAmount    Decimal      @default(0.0) @db.Decimal(15, 2)
+  lineItems      PRLineItem[]
+  purchaseOrders PurchaseOrder[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([createdById])
+  @@index([departmentId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("purchase_requisitions")
+  }
+
+model PRLineItem {
+  id             Int                 @id @default(autoincrement())
+  prId           Int
+  pr             PurchaseRequisition @relation(fields: [prId], references: [id])
+  itemId         Int
+  item           Item                @relation(fields: [itemId], references: [id])
+  quantity       Int
+  unitPrice      Decimal             @db.Decimal(15, 2)
+  notes          String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@map("pr_line_items")
+}
+
+model PurchaseOrder {
+  id             Int                 @id @default(autoincrement())
+  prId           Int?
+  pr             PurchaseRequisition? @relation(fields: [prId], references: [id])
+  vendorId       Int
+  vendor         Vendor              @relation(fields: [vendorId], references: [id])
+  createdById    Int
+  createdBy      User                @relation("POCreator", fields: [createdById], references: [id])
+  approvedById   Int?
+  approvedBy     User?               @relation("POApprover", fields: [approvedById], references: [id])
+  status         String              @default("DRAFT") // DRAFT, PENDING_APPROVAL, APPROVED, SENT, PARTIALLY_RECEIVED, FULLY_RECEIVED
+  totalAmount    Decimal             @default(0.0) @db.Decimal(15, 2)
+  lineItems      POLineItem[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([vendorId])
+  @@index([createdById])
+  @@index([status])
+  @@index([createdAt])
+
+  @@map("purchase_orders")
+}
+
+model POLineItem {
+  id               Int           @id @default(autoincrement())
+  poId             Int
+  po               PurchaseOrder @relation(fields: [poId], references: [id])
+  itemId           Int
+  item             Item          @relation(fields: [itemId], references: [id])
+  quantityOrdered  Int
+  quantityReceived Int           @default(0)
+  unitPrice        Decimal       @db.Decimal(15, 2)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@map("po_line_items")
+}
+
+model SalesOrder {
+  id           Int          @id @default(autoincrement())
+  customerName String
+  createdById  Int
+  createdBy    User         @relation("SOCreator", fields: [createdById], references: [id])
+  status       String       @default("DRAFT") // DRAFT, CONFIRMED, PROCESSING, PARTIALLY_FULFILLED, FULFILLED, CANCELLED
+  totalAmount  Decimal      @default(0.0) @db.Decimal(15, 2)
+  requiredDate DateTime?
+  lineItems    SOLineItem[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([createdById])
+  @@index([status])
+  @@index([createdAt])
+  @@map("sales_orders")
+}
+
+model SOLineItem {
+  id        Int        @id @default(autoincrement())
+  soId      Int
+  so        SalesOrder @relation(fields: [soId], references: [id])
+  itemId    Int
+  item      Item       @relation(fields: [itemId], references: [id])
+  quantity  Int
+  unitPrice Decimal    @db.Decimal(15, 2)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("so_line_items")
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  action     String   // CREATE, UPDATE, DELETE, etc.
+  entityType String   // Role, User, PR, etc.
+  entityId   Int
+  oldValue   Json?
+  newValue   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_log")
+}
+
+enum VendorStatus {
+  ACTIVE
+  INACTIVE
+}
