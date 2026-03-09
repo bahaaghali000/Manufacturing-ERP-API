@@ -3,6 +3,8 @@ import cors from "cors";
 import "dotenv/config";
 import { connectDB, disconnectDB } from "./config/db";
 import authRoutes from "./routes/authRoutes";
+import itemRoutes from "./routes/itemRoutes";
+import inventoryRoutes from "./routes/inventoryRoutes";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -15,6 +17,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/items", itemRoutes);
+app.use("/api/inventory", inventoryRoutes);
 
 app.get("/", (req, res) => {
   res.send("Manufacturing ERP API is running...");

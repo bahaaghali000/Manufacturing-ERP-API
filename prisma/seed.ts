@@ -21,17 +21,17 @@ async function main() {
   // 1. Create Roles
   const roles = [
     { name: "Admin", permissions: { all: true } },
-    { name: "Manager", permissions: { approve_pr: true, approve_po: true, view_reports: true } },
-    { name: "Procurement Officer", permissions: { create_po: true, manage_vendors: true } },
-    { name: "Sales Rep", permissions: { create_so: true } },
-    { name: "Warehouse Staff", permissions: { receive_goods: true, update_inventory: true } },
-    { name: "Employee", permissions: { create_pr: true } },
+    { name: "Manager", permissions: { approve_pr: true, approve_po: true, view_reports: true, view_items: true, view_inventory: true } },
+    { name: "Procurement Officer", permissions: { create_po: true, manage_vendors: true, view_items: true, manage_items: true, view_inventory: true } },
+    { name: "Sales Rep", permissions: { create_so: true, view_items: true, view_inventory: true } },
+    { name: "Warehouse Staff", permissions: { receive_goods: true, update_inventory: true, view_items: true, manage_items: true, view_inventory: true } },
+    { name: "Employee", permissions: { create_pr: true, view_items: true } },
   ];
 
   for (const role of roles) {
     await prisma.role.upsert({
       where: { name: role.name },
-      update: {},
+      update: { permissions: role.permissions },
       create: role,
     });
   }
@@ -49,7 +49,21 @@ async function main() {
 
   const itDept = await prisma.department.findFirst({ where: { name: "IT" } });
 
-  // 3. Create Default Admin User
+  // 3. Create Default Warehouse
+  const warehouses = [
+    { name: "Main Warehouse", location: "Building A" },
+    { name: "Secondary Warehouse", location: "Building B" },
+  ];
+
+  for (const wh of warehouses) {
+    await prisma.warehouse.upsert({
+      where: { id: warehouses.indexOf(wh) + 1 }, // This is a bit hacky but works for initial seed
+      update: {},
+      create: wh,
+    });
+  }
+
+  // 4. Create Default Admin User
   const hashedPassword = await bcrypt.hash("admin123", 10);
   await prisma.user.upsert({
     where: { email: "admin@erp.com" },
