@@ -6,6 +6,8 @@ import authRoutes from "./routes/authRoutes";
 import itemRoutes from "./routes/itemRoutes";
 import inventoryRoutes from "./routes/inventoryRoutes";
 import prRoutes from "./routes/prRoutes";
+import vendorRoutes from "./routes/vendorRoutes";
+import poRoutes from "./routes/poRoutes";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,6 +23,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/items", itemRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/procurement/pr", prRoutes);
+app.use("/api/procurement/vendors", vendorRoutes);
+app.use("/api/procurement/po", poRoutes);
 
 app.get("/", (req, res) => {
   res.send("Manufacturing ERP API is running...");
