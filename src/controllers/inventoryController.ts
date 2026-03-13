@@ -33,6 +33,8 @@ export const getInventory = asyncHandler(
             select: {
               name: true,
               sku: true,
+              unit: true,
+              reorderThreshold: true,
               id: true,
             },
           },
