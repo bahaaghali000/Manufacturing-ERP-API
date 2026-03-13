@@ -4,11 +4,11 @@ import pg from "pg";
 import * as bcrypt from "bcryptjs";
 import "dotenv/config";
 
-const connectionString = process.env.DATABASE_URL;
-const pool = new pg.Pool({ 
+const connectionString = process.env.DATABASE_LOCAL;
+const pool = new pg.Pool({
   connectionString,
   ssl: {
-    rejectUnauthorized: false // Common for many cloud DB providers
+    rejectUnauthorized: false, // Common for many cloud DB providers
   },
   connectionTimeoutMillis: 10000, // 10 seconds
 });
@@ -21,10 +21,40 @@ async function main() {
   // 1. Create Roles
   const roles = [
     { name: "Admin", permissions: { all: true } },
-    { name: "Manager", permissions: { approve_pr: true, approve_po: true, view_reports: true, view_items: true, view_inventory: true } },
-    { name: "Procurement Officer", permissions: { create_po: true, manage_vendors: true, view_items: true, manage_items: true, view_inventory: true } },
-    { name: "Sales Rep", permissions: { create_so: true, view_items: true, view_inventory: true } },
-    { name: "Warehouse Staff", permissions: { receive_goods: true, update_inventory: true, view_items: true, manage_items: true, view_inventory: true } },
+    {
+      name: "Manager",
+      permissions: {
+        approve_pr: true,
+        approve_po: true,
+        view_reports: true,
+        view_items: true,
+        view_inventory: true,
+      },
+    },
+    {
+      name: "Procurement Officer",
+      permissions: {
+        create_po: true,
+        manage_vendors: true,
+        view_items: true,
+        manage_items: true,
+        view_inventory: true,
+      },
+    },
+    {
+      name: "Sales Rep",
+      permissions: { create_so: true, view_items: true, view_inventory: true },
+    },
+    {
+      name: "Warehouse Staff",
+      permissions: {
+        receive_goods: true,
+        update_inventory: true,
+        view_items: true,
+        manage_items: true,
+        view_inventory: true,
+      },
+    },
     { name: "Employee", permissions: { create_pr: true, view_items: true } },
   ];
 
@@ -39,11 +69,17 @@ async function main() {
   const adminRole = await prisma.role.findUnique({ where: { name: "Admin" } });
 
   // 2. Create Departments
-  const departments = ["IT", "Procurement", "Sales", "Warehouse", "Manufacturing"];
+  const departments = [
+    "IT",
+    "Procurement",
+    "Sales",
+    "Warehouse",
+    "Manufacturing",
+  ];
   for (const dept of departments) {
-    const exists = await prisma.department.findFirst({ where: { name: dept }});
+    const exists = await prisma.department.findFirst({ where: { name: dept } });
     if (!exists) {
-        await prisma.department.create({ data: { name: dept }});
+      await prisma.department.create({ data: { name: dept } });
     }
   }
 
